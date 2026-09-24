@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDados();
     configurarNavegacao();
     renderizarTudo();
+    criarBannerInteligente(); // <-- Elemento inteligente injetado via DOM
 });
 
 // Busca todos os dados via service
@@ -57,6 +58,111 @@ function renderizarTudo() {
     renderizarTimes();
     renderizarCompetidores();
     renderizarConfrontos();
+}
+
+// =========================================================================
+// ELEMENTO INTELIGENTE COM DOM: Banner Rotativo de Destaques
+// =========================================================================
+function criarBannerInteligente() {
+    // 1. Prepara dados dinâmicos com base no estado atual da aplicação
+    const agendados = state.confrontos.filter(c => c.status === 'scheduled');
+    
+    let avisos = [];
+
+    if (agendados.length > 0) {
+        avisos = agendados.map(c => {
+            const jogo = state.jogos.find(j => j.id == c.gameId);
+            const time1 = state.times.find(t => t.id == c.team1Id);
+            const time2 = state.times.find(t => t.id == c.team2Id);
+            return {
+                badge: '🔥 PRÓXIMO CONFRONTO',
+                titulo: `${time1?.name || 'Time A'} vs ${time2?.name || 'Time B'}`,
+                desc: `Modalidade: ${jogo?.name || 'E-sports'} | Não perca a transmissão ao vivo!`
+            };
+        });
+    }
+
+    // Adiciona mensagens padrão / estatísticas da plataforma ao carrossel
+    avisos.push(
+        {
+            badge: '🏆 E-CLASSES STATS',
+            titulo: `${state.times.length} Equipes e ${state.competidores.length} Atletas`,
+            desc: 'Acompanhe as estatísticas e os resultados das partidas em tempo real!'
+        },
+        {
+            badge: '🎮 PLATAFORMA',
+            titulo: 'Inscrições e Agendamentos Abertos',
+            desc: 'Cadastre novos competidores e monte os próximos confrontos no menu lateral.'
+        }
+    );
+
+    let indiceAtual = 0;
+
+    // 2. Localiza o container principal para inserir o elemento
+    const container = document.querySelector('main') || document.body;
+
+    // 3. Criação dos elementos via Manipulação de DOM pura
+    const banner = document.createElement('div');
+    banner.id = 'banner-rotativo-inteligente';
+
+    // Estilização dinâmica via JavaScript
+    banner.style.background = 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)';
+    banner.style.borderLeft = '6px solid #6366f1';
+    banner.style.color = '#ffffff';
+    banner.style.padding = '16px 20px';
+    banner.style.borderRadius = '8px';
+    banner.style.marginBottom = '20px';
+    banner.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3)';
+    banner.style.transition = 'opacity 0.4s ease-in-out, transform 0.4s ease-in-out';
+    banner.style.display = 'flex';
+    banner.style.flexDirection = 'column';
+    banner.style.gap = '6px';
+
+    const badgeElemento = document.createElement('span');
+    badgeElemento.style.fontSize = '0.75rem';
+    badgeElemento.style.fontWeight = 'bold';
+    badgeElemento.style.color = '#a5b4fc';
+    badgeElemento.style.letterSpacing = '1px';
+
+    const tituloElemento = document.createElement('h3');
+    tituloElemento.style.margin = '0';
+    tituloElemento.style.fontSize = '1.2rem';
+    tituloElemento.style.color = '#ffffff';
+
+    const descElemento = document.createElement('p');
+    descElemento.style.margin = '0';
+    descElemento.style.fontSize = '0.9rem';
+    descElemento.style.color = '#c7d2fe';
+
+    // 4. Montagem da hierarquia do elemento
+    banner.appendChild(badgeElemento);
+    banner.appendChild(tituloElemento);
+    banner.appendChild(descElemento);
+
+    // Insere no topo da view principal
+    container.insertBefore(banner, container.firstChild);
+
+    // 5. Função para atualizar e alternar os avisos com transição
+    function atualizarConteudo() {
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(-4px)';
+
+        setTimeout(() => {
+            const item = avisos[indiceAtual];
+            badgeElemento.textContent = item.badge;
+            tituloElemento.textContent = item.titulo;
+            descElemento.textContent = item.desc;
+
+            banner.style.opacity = '1';
+            banner.style.transform = 'translateY(0)';
+
+            indiceAtual = (indiceAtual + 1) % avisos.length;
+        }, 400);
+    }
+
+    // Inicializa a rotação automática (a cada 5 segundos)
+    atualizarConteudo();
+    setInterval(atualizarConteudo, 5000);
 }
 
 // --- Funções de renderização ---
